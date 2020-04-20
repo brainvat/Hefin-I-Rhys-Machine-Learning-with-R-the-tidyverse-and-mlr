@@ -1,0 +1,47 @@
+---
+title: "Chapter 3 - Exercises"
+output: html_notebook
+---
+
+# Chapter 3 - Classification with k-nearest neighbors
+
+## Exercise 1
+```{r}
+# import libraries from 3.2
+#install.packages("mlr", dependencies = TRUE)
+#install.packages("tidyverse", dependencies = TRUE)
+#install.packages("mclust", dependencies = TRUE)
+library(mlr)
+library(tidyverse)
+
+# Listing 3.1 (test library functions)
+data(diabetes, package="mclust")
+diabetesTib <- as_tibble(diabetes)
+
+summary(diabetesTib)
+head(diabetesTib, n = 5)
+```
+```{r}
+# Listing 3.2
+ggplot(diabetesTib, aes(glucose, insulin, col = class)) + 
+    geom_point() +
+    theme_bw()
+
+ggplot(diabetesTib, aes(sspg, insulin, col = class)) +
+    geom_point() +
+    theme_bw()
+
+ggplot(diabetesTib, aes(sspg, glucose, col = class)) +
+    geom_point() +
+    theme_bw()
+```
+```{r}
+# Exercise 1
+ggplot(diabetesTib, aes(glucose, insulin, shape = class)) + 
+    geom_point() +
+    theme_bw()
+
+ggplot(diabetesTib, aes(glucose, insulin, col = class, shape = class)) + 
+    geom_point() +
+    theme_bw()
+```
