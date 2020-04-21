@@ -1,11 +1,15 @@
 ---
 title: "Chapter 3 - Exercises"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    number_sections: yes
+    theme: cerulean
 ---
 
 # Chapter 3 - Classification with k-nearest neighbors
 
-## Exercise 1
 ```{r}
 # import libraries from 3.2
 #install.packages("mlr", dependencies = TRUE)
@@ -35,6 +39,8 @@ ggplot(diabetesTib, aes(sspg, glucose, col = class)) +
     geom_point() +
     theme_bw()
 ```
+## Exercise 1
+
 ```{r}
 # Exercise 1
 ggplot(diabetesTib, aes(glucose, insulin, shape = class)) + 
@@ -44,4 +50,86 @@ ggplot(diabetesTib, aes(glucose, insulin, shape = class)) +
 ggplot(diabetesTib, aes(glucose, insulin, col = class, shape = class)) + 
     geom_point() +
     theme_bw()
+```
+```{r}
+# Section 3.2.3
+diabetesTask <- makeClassifTask(data = diabetesTib, target = "class")
+print(diabetesTask)
+
+knn <- makeLearner("classif.knn", par.vals = list ("k" = 2))
+knnModel <- train(knn, diabetesTask)
+knnPredictions <- predict(knnModel, newdata = diabetesTib)
+
+knnPerf <- performance(knnPredictions, measures = list(mmce, acc))
+knnPerf
+```
+
+```{r}
+# Section 3.5
+holdout <- makeResampleDesc(method = "Holdout", split = 2/3, stratify = TRUE)
+holdoutCV <- resample(learner = knn, task = diabetesTask, 
+                      resampling = holdout, measures = list(mmce, acc))
+
+holdoutCV$aggr
+```
+
+# Exercise 2
+
+```{r}
+holdout2 <- makeResampleDesc(method = "Holdout", split = 90/100, stratify = FALSE)
+holdoutCV2 <- resample(learner = knn, task = diabetesTask,
+                       resampling = holdout2, measures = list(mmce, acc))
+
+holdoutCV2$aggr
+```
+
+```{r, message = FALSE, echo = TRUE}
+# Section 3.5.1
+calculateConfusionMatrix(holdoutCV$pred, relative = TRUE)
+calculateConfusionMatrix(holdoutCV2$pred, relative = TRUE)
+
+# Section 3.5.2
+kFold <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50, stratify = TRUE)
+kFoldCV <- resample(learner = knn, task = diabetesTask, resampling = kFold, 
+                    measures = list(mmce, acc))
+```
+
+```{r, message = TRUE, echo = TRUE}
+kFoldCV$aggr
+```
+
+# Exercise 3
+
+```{r, message = FALSE, echo = TRUE, results = 'hide'}
+kFoldResults <- tibble(run = integer(), Method = character(), Folds = integer(), 
+                           Reps = integer(), mmce.test.mean = double(), acc.test.mean = double())
+
+for (i in c(1, 2, 3, 4, 5)) {
+  kFold2 <- makeResampleDesc(method = "RepCV", folds = 3, reps = 5, stratify = TRUE)
+  kFoldCV2 <- resample(learner = knn, task = diabetesTask, resampling = kFold2, 
+                    measures = list(mmce, acc))
+  
+  kFoldResults <- add_row(kFoldResults, run = i, Method = "RepCV", Folds = 3, Reps = 5, 
+                 mmce.test.mean = kFoldCV2$aggr['mmce.test.mean'],
+                 acc.test.mean = kFoldCV2$aggr['acc.test.mean'])
+
+  kFold3 <- makeResampleDesc(method = "RepCV", folds = 3, reps = 500, stratify = TRUE)
+  kFoldCV3 <- resample(learner = knn, task = diabetesTask, resampling = kFold3, 
+                    measures = list(mmce, acc))
+
+  kFoldResults <- add_row(kFoldResults, run = i, Method = "RepCV", Folds = 3, Reps = 500, 
+                 mmce.test.mean = kFoldCV3$aggr['mmce.test.mean'],
+                 acc.test.mean = kFoldCV3$aggr['acc.test.mean'])
+}
+
+tally <- kFoldResults %>% 
+  group_by(Method, Folds, Reps) %>%
+  summarize(mmce.mean = mean(mmce.test.mean),
+            acc.mean = mean(acc.test.mean),
+            count = n())
+
+```
+
+```{r, echo = TRUE, message = TRUE, results = 'show'}
+tally
 ```
