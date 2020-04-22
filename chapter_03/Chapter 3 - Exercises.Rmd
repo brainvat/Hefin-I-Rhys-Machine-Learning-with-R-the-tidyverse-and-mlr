@@ -133,3 +133,123 @@ tally <- kFoldResults %>%
 ```{r, echo = TRUE, message = TRUE, results = 'show'}
 tally
 ```
+
+## Confusion matrices (last iteration of each)
+```{r}
+
+# folds = 10, reps = 50, stratify = TRUE
+calculateConfusionMatrix(kFoldCV$pred, relative = TRUE)
+
+# folds = 3, reps = 5, stratify = TRUE
+calculateConfusionMatrix(kFoldCV2$pred, relative = TRUE)
+
+# folds = 3, reps = 500, stratify = TRUE
+calculateConfusionMatrix(kFoldCV3$pred, relative = TRUE)
+```
+
+# Exercise 4
+```{r}
+# these methods are invalid, LOO does not "fold" nor does it "repeat"
+# LOO2 <- makeResampleDesc(method = "LOO", stratify = TRUE)
+# LOO3 <- makeResampleDesc(method = "LOO", reps = 5)
+```
+
+# Section 3.7
+```{r, message = FALSE}
+knnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:10))
+gridSearch <- makeTuneControlGrid()
+cvForTuning <- makeResampleDesc("RepCV", folds = 10, reps = 20)
+tunedK <- tuneParams("classif.knn", task = diabetesTask, 
+                     resampling = cvForTuning,
+                     par.set = knnParamSpace, control = gridSearch)
+
+tunedK
+```
+
+```{r}
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mmce.test.mean", plot.type = "line") +
+  theme_bw()
+```
+```{r}
+tunedKnn <- setHyperPars(makeLearner("classif.knn"), par.vals = tunedK$x)
+tunedKnnModel <- train(tunedKnn, diabetesTask)
+```
+
+# Section 3.7.1 - hyperparameter tuning with nested cross-validation
+```{r, message = FALSE}
+inner <- makeResampleDesc("CV")
+outer <- makeResampleDesc("RepCV", folds = 10, reps = 5)
+knnWrapper <- makeTuneWrapper("classif.knn", resampling = inner,
+                              par.set = knnParamSpace, control = gridSearch)
+cvWithTuning <- resample(knnWrapper, diabetesTask, resampling = outer)
+cvWithTuning
+```
+# Section 3.7.2 - make predictions
+```{r}
+newDiabetesPatients <- tibble(glucose = c(82, 108, 300),
+                              insulin = c(361, 288, 1052),
+                              sspg = c(200, 186, 135))
+newDiabetesPatients
+newPatentisPredictions <- predict(tunedKnnModel, newdata = newDiabetesPatients)
+getPredictionResponse(newPatentisPredictions)
+
+```
+# Exercise 5
+```{r, message = FALSE}
+# load and summarize iris data
+irisTib <- as_tibble(iris)
+summary(irisTib)
+head(irisTib, n = 5)
+
+# visualize data
+ggplot(irisTib, aes(Sepal.Length, Sepal.Width, col = Species)) + 
+    geom_point() +
+    theme_bw()
+
+ggplot(irisTib, aes(Petal.Length, Petal.Width, col = Species)) + 
+    geom_point() +
+    theme_bw()
+
+knnParamSpaceIris5 <- makeParamSet(makeDiscreteParam("k", values = 1:10))
+irisTask5 <- makeClassifTask(data = irisTib, target = "Species")
+
+gridSearchIris5 <- makeTuneControlGrid()
+cvForTuningIris5 <- makeResampleDesc("RepCV", folds = 10, reps = 20)
+tunedKIris5 <- tuneParams("classif.knn", task = irisTask5, 
+                     resampling = cvForTuningIris5,
+                     par.set = knnParamSpaceIris5, control = gridSearchIris5)
+
+tunedKIris5
+knnTuningDataIris5 <- generateHyperParsEffectData(tunedKIris5)
+plotHyperParsEffect(knnTuningDataIris5, x = "k", y = "mmce.test.mean", plot.type = "line") +
+  theme_bw()
+```
+# Exercise 6
+```{r, message = FALSE}
+# set up inner and outer loops for hyperparameter tuning
+irisTask6 <- makeClassifTask(data = irisTib, target = "Species")
+knnParamSpaceIris6 <- makeParamSet(makeDiscreteParam("k", values = 1:5))
+gridSearchIris6 <- makeTuneControlGrid()
+
+innerIris6 <- makeResampleDesc("CV")
+outerIris6 <- makeResampleDesc(method = "Holdout", split = 2/3, stratify = TRUE)
+knnWrapperIris6 <- makeTuneWrapper("classif.knn", resampling = innerIris6,
+                              par.set = knnParamSpaceIris6, control = gridSearchIris6)
+cvIrisWithTuning6 <- resample(knnWrapperIris6, irisTask6, resampling = outerIris6)
+cvIrisWithTuning6
+```
+# Exercise 7
+```{r, message = FALSE}
+# set up inner and outer loops for hyperparameter tuning
+irisTask7 <- makeClassifTask(data = irisTib, target = "Species")
+knnParamSpaceIris7 <- makeParamSet(makeDiscreteParam("k", values = 1:5))
+gridSearchIris7 <- makeTuneControlGrid()
+
+innerIris7 <- makeResampleDesc("CV")
+outerIris7 <- makeResampleDesc("RepCV", folds = 5)
+knnWrapperIris7 <- makeTuneWrapper("classif.knn", resampling = innerIris7,
+                              par.set = knnParamSpaceIris7, control = gridSearchIris7)
+cvIrisWithTuning7 <- resample(knnWrapperIris7, irisTask7, resampling = outerIris7)
+cvIrisWithTuning7
+```
