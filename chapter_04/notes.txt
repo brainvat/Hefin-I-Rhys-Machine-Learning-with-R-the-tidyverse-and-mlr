@@ -1,0 +1,6 @@
+23-APR-2020
+
+Notes
+
+- read chapter 4, through section 4.1.2
+- try building own softmax function
