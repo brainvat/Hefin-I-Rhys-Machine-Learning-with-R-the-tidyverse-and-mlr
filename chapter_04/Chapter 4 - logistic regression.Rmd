@@ -22,9 +22,207 @@ print(result)
 print(sum(result))
 ```
 
+```{r}
+# 4.2
+
+library(mlr)
+library(tidyverse)
+
+#install.packages("titanic")
+data(titanic_train, package = "titanic")
+titanicTib <- as_tibble(titanic_train)
+
+titanicTib
+```
+```{r}
+factors <- c("Survived", "Sex", "Pclass")
+titanicClean <- titanicTib %>%
+  mutate_at(.vars = factors, .funs = factor) %>%
+  mutate(FamilySize = SibSp + Parch) %>%
+  select(Survived, Pclass, Sex, Age, Fare, FamilySize)
+
+titanicClean
+```
+```{r}
+titanicUntidy <- gather(titanicClean, key = "Variable", value = "Value", -Survived)
+titanicUntidy
+```
+```{r}
+titanicUntidy %>%
+  filter(Variable != "Pclass" & Variable != "Sex") %>%
+  ggplot(aes(Survived, as.numeric(Value))) +
+  facet_wrap(~ Variable, scales = "free_y") +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  theme_bw()
+```
+
 ## Exercise 1
 
 ```{r}
+titanicUntidy %>%
+  filter(Variable != "Pclass" & Variable != "Sex") %>%
+  ggplot(aes(Survived, as.numeric(Value))) +
+  facet_wrap(~ Variable, scales = "free_y") +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_point(alpha = 0.05, size = 3) +
+  theme_bw()
+```
+```{r}
+# Listing 4.5
+titanicUntidy %>%
+  filter(Variable == "Pclass" | Variable == "Sex") %>%
+  ggplot(aes(Value, fill = Survived)) +
+  facet_wrap(~ Variable, scales = "free_x") +
+  geom_bar(position = "fill") +
+  theme_bw()
 ```
 
+```{r}
+# Exercise 2
+titanicUntidy %>%
+  filter(Variable == "Pclass" | Variable == "Sex") %>%
+  ggplot(aes(Value, fill = Survived)) +
+  facet_wrap(~ Variable, scales = "free_x") +
+  geom_bar(position = "dodge") +
+  theme_bw()
 
+titanicUntidy %>%
+  filter(Variable == "Pclass" | Variable == "Sex") %>%
+  ggplot(aes(Value, fill = Survived)) +
+  facet_wrap(~ Variable, scales = "free_x") +
+  geom_bar(position = "stack") +
+  theme_bw()
+```
+
+```{r}
+# Listing 4.6
+titanicTask<- makeClassifTask(data = titanicClean, target = "Survived")
+logReg <- makeLearner("classif.logreg", predict.type = "prob")
+result <- try ({
+  logRegModel <- train(logReg, titanicTask)
+})
+class(result)
+```
+
+```{r}
+# Listing 4.7
+titanicClean$Age[1:60]
+print(paste("Null count = ", sum(is.na(titanicClean$Age))))
+```
+
+```{r}
+# Listing 4.8
+imp <- impute(titanicClean, cols = list(Age = imputeMean()))
+old_nulls <- sum(is.na(titanicClean$Age))
+new_nulls <- sum(is.na(imp$data$Age))
+
+print(paste("Old nulls = ", old_nulls, ", New nulls = ", new_nulls))
+```
+
+```{r}
+# Listing 4.9
+titanicTask <- makeClassifTask(data = imp$data, target = "Survived")
+logRegModel <- train(logReg, titanicTask)
+logRegModel
+```
+
+```{r, message = FALSE}
+# Listing 4.10
+logRegWrapper <- makeImputeWrapper("classif.logreg", cols = list(Age = imputeMean()))
+
+# Listing 4.11
+kFold <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50, stratify = TRUE)
+logRegWithImpute <- resample(logRegWrapper, titanicTask, resampling = kFold, measures = list(acc, fpr, fnr))
+logRegWithImpute
+```
+
+```{r}
+# Listing 4.12
+logRegModelData <- getLearnerModel(logRegModel)
+coef(logRegModelData)
+```
+
+```{r}
+# Listing 4.13
+exp(cbind(Odds_Ratio = coef(logRegModelData), confint(logRegModelData)))
+```
+
+```{r}
+# Listing 4.14
+data(titanic_test, package = "titanic")
+titanicNew <- as_tibble(titanic_test)
+titanicNewClean <- titanicNew %>%
+  mutate_at(.vars = c("Sex", "Pclass"), .funs = factor) %>%
+  mutate(FamilySize = SibSp + Parch) %>%
+  select(Pclass, Sex, Age, Fare, FamilySize)
+
+predict(logRegModel, newdata = titanicNewClean)
+```
+
+```{r, message = FALSE}
+# Exercise 3
+titanicClean2 <- titanicTib %>%
+  mutate_at(.vars = factors, .funs = factor) %>%
+  mutate(FamilySize = SibSp + Parch) %>%
+  select(Survived, Pclass, Sex, Age, FamilySize)
+imp2 <- impute(titanicClean2, cols = list(Age = imputeMean()))
+titanicTask2 <- makeClassifTask(data = imp2$data, target = "Survived")
+logRegModel2 <- train(logReg, titanicTask2)
+logRegWithImpute2 <- resample(logRegWrapper, titanicTask2, resampling = kFold, measures = list(acc, fpr, fnr))
+
+predict(logRegModel2, newdata = titanicNewClean)
+
+logRegModel$learner.model
+logRegModel2$learner.model
+
+print("Dropping Fare made almost no difference to the coefficients and the predicted responses are the same in both models.")
+```
+
+```{r, message = FALSE}
+# Exercise 4
+factors <- c("Survived", "Sex", "Pclass", "Salutation")
+validSalutations <- c("Mr", "Dr", "Master", "Miss", "Mrs", "Rev")
+names <- titanicTib$Name
+
+titanicTib$Salutation <- str_split(names, pattern = "\\, ") %>% 
+  map(function(x) str_split(x[2], pattern = "\\.") %>% 
+  map(function(x) x[1])) %>% unlist
+
+titanicTib$Salutation[!(titanicTib$Salutation %in% validSalutations)] <- "Other"
+
+titanicClean4 <- titanicTib %>%
+  mutate_at(.vars = factors, .funs = factor) %>%
+  mutate(FamilySize = SibSp + Parch) %>%
+  select(Survived, Pclass, Sex, Age, FamilySize, Salutation)
+
+titanicClean4
+```
+
+```{r, message = FALSE}
+# Exercise 5
+imp5 <- impute(titanicClean4, cols = list(Age = imputeMean()))
+titanicTask5 <- makeClassifTask(data = imp5$data, target = "Survived")
+logRegModel5 <- train(logReg, titanicTask5)
+logRegWithImpute5 <- resample(logRegWrapper, titanicTask5, resampling = kFold, measures = list(acc, fpr, fnr))
+
+namesNew <- titanicNew$Name
+
+titanicNew$Salutation <- str_split(namesNew, pattern = "\\, ") %>% 
+  map(function(x) str_split(x[2], pattern = "\\.") %>% 
+  map(function(x) x[1])) %>% unlist
+
+titanicNew$Salutation[!(titanicNew$Salutation %in% validSalutations)] <- "Other"
+
+titanicNewClean5 <- titanicNew %>%
+  mutate_at(.vars = c("Sex", "Pclass"), .funs = factor) %>%
+  mutate(FamilySize = SibSp + Parch) %>%
+  select(Pclass, Sex, Age, Fare, FamilySize, Salutation)
+
+predict(logRegModel5, newdata = titanicNewClean5)
+
+logRegModel$learner.model
+logRegModel2$learner.model
+logRegModel5$learner.model
+
+print("Adding the Salutation feature improved the model.")
+```
