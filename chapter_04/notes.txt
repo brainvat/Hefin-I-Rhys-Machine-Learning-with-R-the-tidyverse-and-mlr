@@ -4,3 +4,12 @@ Notes
 
 - read chapter 4, through section 4.1.2
 - try building own softmax function
+
+24-APR-2020
+
+Notes
+
+- finish chapter 4 reading
+- complete all exercises
+- review solutions
+
