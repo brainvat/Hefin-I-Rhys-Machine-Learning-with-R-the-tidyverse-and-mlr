@@ -183,3 +183,44 @@ tunedKnn <- setHyperPars(makeLearner("classif.knn"), par.vals = tunedK$x)
 tunedKnnModel <- train(tunedKnn, wineDiscrTask)
 
 ```
+
+# Exercise 2 (corrected after review of published solution)
+
+In this correction, we use the LD1 and LD2 discrimant functions (DFs) from the previously trained LDA model.
+
+```{r, message = FALSE}
+
+ldaData <- wineTib %>%
+  mutate(LD1 = ldaPreds[, 1], LD2 = ldaPreds[, 2]) %>%
+  select(Class, LD1, LD2)
+ldaTask <- makeClassifTask(data = ldaData, target = "Class")
+knnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:5))
+gridSearch <- makeTuneControlGrid()
+cvForTuning <- makeResampleDesc("RepCV", folds = 5, reps = 10)
+tunedK <- tuneParams("classif.knn", task = ldaTask,
+                     resampling = cvForTuning,
+                     par.set = knnParamSpace,
+                     control = gridSearch)
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mmce.test.mean",
+                    plot.type = "line") + theme_bw()
+tunedKnn <- setHyperPars(makeLearner("classif.knn"), par.vals = tunedK$x)
+tunedKnnModel <- train(tunedKnn, ldaTask)
+```
+
+Cross-validate again and plot the clusters.
+
+```{r, message = FALSE}
+inner <- makeResampleDesc("CV")
+outerHoldout <- makeResampleDesc("Holdout", split = 80/100, stratify = TRUE)
+knnWrapper <- makeTuneWrapper("classif.knn", resampling = inner,
+                              par.set = knnParamSpace, control = gridSearch)
+holdoutCVWithTuning <- resample(knnWrapper, ldaTask, resampling = outerHoldout)
+(holdoutCVWithTuning)
+truthDistribution <- table(ldaCV$pred$data$truth)
+(round(truthDistribution / sum(truthDistribution), 2))
+modelDistribution <- holdoutCVWithTuning$task.desc$class.distribution
+(round(modelDistribution / sum(modelDistribution), 2))
+
+print("Same distributions of clusters on both models")
+```
