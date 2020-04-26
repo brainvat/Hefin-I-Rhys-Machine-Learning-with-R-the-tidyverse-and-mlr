@@ -1,0 +1,185 @@
+---
+title: "Chapter 5 - Classification by discrimant analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Listing 5.2 
+
+```{r, message = FALSE}
+library(mlr)
+library(tidyverse)
+
+#install.packages("HDclassif")
+data(wine, package = "HDclassif")
+wineTib <- as_tibble(wine)
+wineTib
+```
+```{r}
+names(wineTib) <- c("Class", "Alco", "Malic", "Ash", "Alk", "Mag",
+                    "Phe", "Flav", "Non_flav", "Proan", "Col", "Hue",
+                    "OD", "Prol")
+wineTib$Class <- as.factor(wineTib$Class)
+wineTib
+```
+# Lisitng 5.3
+```{r}
+wineUntidy <- gather(wineTib, "Variable", "Value", -Class)
+ggplot(wineUntidy, aes(Class, Value)) +
+  facet_wrap(~ Variable, scales = "free_y") +
+  geom_boxplot() +
+  theme_bw()
+```
+# Listing 5.4
+```{r, warning = FALSE}
+wineTask <- makeClassifTask(data = wineTib, target = "Class")
+lda <- makeLearner("classif.lda")
+ldaModel <- train(lda, wineTask)
+ldaModel$task.desc
+```
+# Listing 5.5
+```{r}
+ldaModelData <- getLearnerModel(ldaModel)
+ldaPreds <- predict(ldaModelData)$x
+head(ldaPreds)
+```
+# Listing 5.6
+```{r}
+wineTib %>%
+  mutate(LD1 = ldaPreds[, 1], 
+         LD2 = ldaPreds[, 2],) %>%
+  ggplot(aes(LD1, LD2, col = Class)) +
+  geom_point() +
+  stat_ellipse() +
+  theme_bw()
+```
+# Listing 5.7
+```{r}
+qda <- makeLearner("classif.qda")
+qdaModel <- train(qda, wineTask)
+```
+# Listing 5.8
+```{r, message = FALSE}
+kFold <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50, stratify = TRUE)
+ldaCV <- resample(learner = lda, task = wineTask, resampling = kFold, measures = list(mmce, acc))
+ldaCV$aggr
+```
+```{r}
+calculateConfusionMatrix(ldaCV$pred, relative = TRUE)
+```
+```{r, message = FALSE}
+qdaCV <- resample(learner = qda, task = wineTask, resampling = kFold, measures = list(mmce, acc))
+qdaCV$aggr
+```
+```{r}
+calculateConfusionMatrix(qdaCV$pred, relative = TRUE)
+```
+```{r}
+poisenedWine <- tibble(Alco = 13, Malic = 2, Ash = 2.2, Alk = 19, Mag = 100, Phe = 2.3,
+                       Flav = 2.5, Non_flav = 0.35, Proan = 1.7, Col = 4, Hue = 1.1,
+                       OD = 3, Prol = 750)
+predict(qdaModel, newdata = poisenedWine)
+```
+# Exercise 1
+
+1. We evaluate the LDA and QDA learners by comparing their statistical accuracy given as:
+
+$$ Accuracy = \frac{TP+TN}{TP+FP+TN+FN} $$
+
+```{r}
+# vineyard 3 interpretation for QDA
+# help from https://rpubs.com/prcuny/161764
+
+qda_cases <- length(qdaCV$pred$data$id)
+qda_table <- data.frame(truth = qdaCV$pred$data$truth, response = qdaCV$pred$data$response, learner = "QDA")
+qda_table["newclass"] <- ifelse(qda_table["truth"] != 3 & qda_table["response"] != 3, "TN",
+                                ifelse(qda_table["truth"] != 3 & qda_table["response"] == 3, "FP",
+                                       ifelse(qda_table["truth"] == 3 & qda_table["response"] != 3, "FN", "TP")))
+(qda_conf <- table(qda_table %>% select(newclass)))
+print(paste("QDA Accuracy = ", round(100*(qda_conf[c("TP")] + qda_conf[c("TN")])/qda_cases, 2), "%", sep = ""))
+```
+```{r}
+lda_cases <- length(ldaCV$pred$data$id)
+lda_table <- data.frame(truth = ldaCV$pred$data$truth, response = ldaCV$pred$data$response, learner = "LDA")
+lda_table["newclass"] <- ifelse(lda_table["truth"] != 3 & lda_table["response"] != 3, "TN",
+                                ifelse(lda_table["truth"] != 3 & lda_table["response"] == 3, "FP",
+                                       ifelse(lda_table["truth"] == 3 & lda_table["response"] != 3, "FN", "TP")))
+(lda_conf <- table(lda_table %>% select(newclass)))
+print(paste("LDA Accuracy = ", round(100*(lda_conf[c("TP")] + lda_conf[c("TN")])/lda_cases, 2), "%", sep = ""))
+```
+We find that the QDA learner is more accurate than the LDA method.
+
+# Exercise 2
+
+First, extract the predicted values from LDA and build a tuned kNN model.
+
+```{r, message = FALSE}
+#ldaData <- data.frame(truth = as.integer(as.character(ldaCV$pred$data$truth)), response = as.integer(as.character(ldaCV$pred$data$response)))
+ldaData <- data.frame(response = as.integer(as.character(ldaCV$pred$data$response)))
+ldaTask <- makeClassifTask(data = ldaData, target = "response")
+knnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:5))
+gridSearch <- makeTuneControlGrid()
+cvForTuning <- makeResampleDesc("RepCV", folds = 5, reps = 10)
+tunedK <- tuneParams("classif.knn", task = ldaTask,
+                     resampling = cvForTuning,
+                     par.set = knnParamSpace,
+                     control = gridSearch)
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mmce.test.mean",
+                    plot.type = "line") + theme_bw()
+tunedKnn <- setHyperPars(makeLearner("classif.knn"), par.vals = tunedK$x)
+tunedKnnModel <- train(tunedKnn, ldaTask)
+```
+
+Then, cross-validate.
+
+```{r, message = FALSE}
+inner <- makeResampleDesc("CV")
+outerHoldout <- makeResampleDesc("Holdout", split = 80/100, stratify = TRUE)
+knnWrapper <- makeTuneWrapper("classif.knn", resampling = inner,
+                              par.set = knnParamSpace, control = gridSearch)
+holdoutCVWithTuning <- resample(knnWrapper, ldaTask, resampling = outerHoldout)
+(holdoutCVWithTuning)
+(table(ldaCV$pred$data$truth))
+(holdoutCVWithTuning$task.desc$class.distribution)
+```
+
+Compare to solution in book.
+```{r, message = FALSE}
+# CREATE TASK ----
+wineDiscr <- wineTib %>%
+  mutate(LD1 = ldaPreds[, 1], LD2 = ldaPreds[, 2]) %>%
+  select(Class, LD1, LD2)
+
+wineDiscrTask <- makeClassifTask(data = wineDiscr, target = "Class")
+
+# TUNE K ----
+knnParamSpace <- makeParamSet(makeDiscreteParam("k", values = 1:10))
+gridSearch <- makeTuneControlGrid()
+cvForTuning <- makeResampleDesc("RepCV", folds = 10, reps = 20)
+tunedK <- tuneParams("classif.knn", task = wineDiscrTask,
+                     resampling = cvForTuning,
+                     par.set = knnParamSpace,
+                     control = gridSearch)
+
+knnTuningData <- generateHyperParsEffectData(tunedK)
+plotHyperParsEffect(knnTuningData, x = "k", y = "mmce.test.mean",
+                    plot.type = "line") +
+    theme_bw()
+# CROSS-VALIDATE MODEL-BUILDING PROCESS ----
+inner <- makeResampleDesc("CV")
+outer <- makeResampleDesc("CV", iters = 10)
+knnWrapper <- makeTuneWrapper("classif.knn", resampling = inner,
+                              par.set = knnParamSpace,
+                              control = gridSearch)
+
+cvWithTuning <- resample(knnWrapper, wineDiscrTask, resampling = outer)
+cvWithTuning
+
+# TRAINING FINAL MODEL WITH TUNED K ----
+tunedKnn <- setHyperPars(makeLearner("classif.knn"), par.vals = tunedK$x)
+
+tunedKnnModel <- train(tunedKnn, wineDiscrTask)
+
+```
