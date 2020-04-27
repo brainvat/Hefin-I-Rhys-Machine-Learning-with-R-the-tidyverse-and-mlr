@@ -1,6 +1,8 @@
 ---
 title: "Chapter 6 - naive Bayes and SVM"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 # Setup
@@ -74,6 +76,16 @@ politician <- tibble(V1 = "n", V2 = "n", V3 = "y", V4 = "n", V5 = "n", V6 = "y",
                      V13 = "n", V14 = "n", V15 = "y", V16 = "n")
 politicianPred <- predict(bayesModel, newdata = politician)
 getPredictionResponse(politicianPred)
+```
+# Exercise 2
+$$ p(k|x) = \frac {p(x|k) \times p(k)} {p(x)} $$
+$$ posterior = \frac {likelihood \times prior} {evidence} $$
+```{r, message = FALSE}
+# a-priori probabilities
+bayesModel$learner.model$apriori
+
+# posterior conditional probabilities of each vote
+bayesModel$learner.model$tables
 ```
 # Listing 6.7
 
