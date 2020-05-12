@@ -2,6 +2,11 @@
 title: "Chapter 6 - naive Bayes and SVM"
 output:
   html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    highlight: tango
+    theme: united
     df_print: paged
 ---
 
@@ -119,10 +124,10 @@ bayesModel$learner.model$tables
 
 # Section 6.6
 
-## Listing 6.15
+### Listing 6.15
 
-## Listing 6.16
+### Listing 6.16
 
-## Exercise 3
+### Exercise 3
 
-## Exercise 4
+### Exercise 4
