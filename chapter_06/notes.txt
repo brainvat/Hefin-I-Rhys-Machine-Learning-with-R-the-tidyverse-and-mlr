@@ -4,3 +4,9 @@ Notes
 
 - Complete exercise 1 and reading through section 6.2.3
 - Complete exercise 2
+
+12-MAY-2020
+
+Notes
+
+- Stub out listings and exercises from section 6.3 to end of chapter

@@ -5,7 +5,7 @@ output:
     df_print: paged
 ---
 
-# Setup
+# Section 6.2
 
 Updating examples to use the newer _mlr3_ library, since _mlr_ is deprecated.
 
@@ -22,21 +22,25 @@ if (use_mlr3) {
 }
 library(tidyverse)
 ```
-# Listing 6.1
+## Section 6.2.1
+
+### Listing 6.1
 ```{r}
 data(HouseVotes84, package = "mlbench")
 votesTib <- as_tibble(HouseVotes84)
 votesTib
 ```
-# Listing 6.2
+### Listing 6.2
 ```{r}
 map_dbl(votesTib, ~sum(is.na(.)))
 ```
-# Exercise 1
+### Exercise 1
 ```{r}
 votesTib %>% select(-Class) %>% map_dbl(~sum(which(. == "y")))
 ```
-# Listing 6.3
+## Section 6.2.2
+
+### Listing 6.3
 ```{r}
 votesUntidy <- gather(votesTib, "Variable", "Value", -Class)
 ggplot(votesUntidy, aes(Class, fill = Value)) +
@@ -44,7 +48,9 @@ ggplot(votesUntidy, aes(Class, fill = Value)) +
   geom_bar(position = "fill") +
   theme_bw()
 ```
-# Listing 6.4
+## Section 6.2.3
+
+### Listing 6.4
 ```{r}
 if (use_mlr3) {
   # votesTask <- makeClassifTask(data = votesTib, target = "Class")
@@ -58,7 +64,7 @@ if (use_mlr3) {
   bayesModel <- train(bayes, votesTask)
 }
 ```
-# Listing 6.5
+### Listing 6.5
 ```{r, message = FALSE}
 if (use_mlr3) {
   # todo: find mlr3 equivalent for resampling
@@ -69,7 +75,7 @@ if (use_mlr3) {
   bayesCV$aggr
 }
 ```
-# Listing 6.6
+### Listing 6.6
 ```{r, message = FALSE, warning = FALSE}
 politician <- tibble(V1 = "n", V2 = "n", V3 = "y", V4 = "n", V5 = "n", V6 = "y",
                      V7 = "y", V8 = "y", V9 = "y", V10 = "y", V11 = "n", V12 = "y",
@@ -77,7 +83,7 @@ politician <- tibble(V1 = "n", V2 = "n", V3 = "y", V4 = "n", V5 = "n", V6 = "y",
 politicianPred <- predict(bayesModel, newdata = politician)
 getPredictionResponse(politicianPred)
 ```
-# Exercise 2
+### Exercise 2
 $$ p(k|x) = \frac {p(x|k) \times p(k)} {p(x)} $$
 $$ posterior = \frac {likelihood \times prior} {evidence} $$
 ```{r, message = FALSE}
@@ -87,7 +93,36 @@ bayesModel$learner.model$apriori
 # posterior conditional probabilities of each vote
 bayesModel$learner.model$tables
 ```
-# Listing 6.7
+# Section 6.5
 
+## Section 6.5.1
 
-# Listing 6.8
+### Listing 6.7
+
+## Section 6.5.2
+
+### Listing 6.8
+
+### Listing 6.9
+
+### Listing 6.10
+
+### Listing 6.11
+
+### Listing 6.12
+
+### Listing 6.13
+
+## Section 6.5.3
+
+### Listing 6.14
+
+# Section 6.6
+
+## Listing 6.15
+
+## Listing 6.16
+
+## Exercise 3
+
+## Exercise 4
