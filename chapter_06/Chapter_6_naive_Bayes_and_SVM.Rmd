@@ -30,23 +30,23 @@ library(tidyverse)
 ## Section 6.2.1
 
 ### Listing 6.1
-```{r}
+```{r Listing_6_1}
 data(HouseVotes84, package = "mlbench")
 votesTib <- as_tibble(HouseVotes84)
 votesTib
 ```
 ### Listing 6.2
-```{r}
+```{r Listing_6_2}
 map_dbl(votesTib, ~sum(is.na(.)))
 ```
 ### Exercise 1
-```{r}
+```{r Exercise_1}
 votesTib %>% select(-Class) %>% map_dbl(~sum(which(. == "y")))
 ```
 ## Section 6.2.2
 
 ### Listing 6.3
-```{r}
+```{r Listing_6_3}
 votesUntidy <- gather(votesTib, "Variable", "Value", -Class)
 ggplot(votesUntidy, aes(Class, fill = Value)) +
   facet_wrap(~ Variable, scales = "free_y") +
@@ -56,7 +56,7 @@ ggplot(votesUntidy, aes(Class, fill = Value)) +
 ## Section 6.2.3
 
 ### Listing 6.4
-```{r}
+```{r Listing_6_4}
 if (use_mlr3) {
   # votesTask <- makeClassifTask(data = votesTib, target = "Class")
   votesTask <- TaskClassif$new(id = "votes", backend = votesTib, target = "Class")
@@ -70,7 +70,7 @@ if (use_mlr3) {
 }
 ```
 ### Listing 6.5
-```{r, message = FALSE}
+```{r Listing_6_5, message = FALSE, cache=TRUE}
 if (use_mlr3) {
   # todo: find mlr3 equivalent for resampling
 } else {
@@ -81,7 +81,7 @@ if (use_mlr3) {
 }
 ```
 ### Listing 6.6
-```{r, message = FALSE, warning = FALSE}
+```{r Listing_6_6, message = FALSE, warning = FALSE}
 politician <- tibble(V1 = "n", V2 = "n", V3 = "y", V4 = "n", V5 = "n", V6 = "y",
                      V7 = "y", V8 = "y", V9 = "y", V10 = "y", V11 = "n", V12 = "y",
                      V13 = "n", V14 = "n", V15 = "y", V16 = "n")
@@ -91,7 +91,7 @@ getPredictionResponse(politicianPred)
 ### Exercise 2
 $$ p(k|x) = \frac {p(x|k) \times p(k)} {p(x)} $$
 $$ posterior = \frac {likelihood \times prior} {evidence} $$
-```{r, message = FALSE}
+```{r Exercise_2, message = FALSE}
 # a-priori probabilities
 bayesModel$learner.model$apriori
 
@@ -105,12 +105,12 @@ library(tidyverse)
 ```
 ## Section 6.5.1
 ```{r, message = FALSE, warning = FALSE}
-if ("kernlab" %in% rownames(installed.packages) == FALSE) {
-  install.packages("kernlab")
-}
+# if ("kernlab" %in% rownames(installed.packages) == FALSE) {
+#   install.packages("kernlab")
+# }
 ```
 ### Listing 6.7
-```{r}
+```{r Listing_6_7}
 data(spam, package = "kernlab")
 spamTib <- as_tibble(spam)
 spamTib
@@ -119,17 +119,17 @@ spamTib
 ## Section 6.5.2
 
 ### Listing 6.8
-```{r}
+```{r Listing_6_8}
 spamTask <- makeClassifTask(data = spamTib, target = "type")
 svm <- makeLearner("classif.svm")
 ```
 ### Listing 6.9
-```{r}
+```{r Listing_6_9}
 getParamSet("classif.svm")
 ```
 
 ### Listing 6.10
-```{r}
+```{r Listing_6_10}
 kernels <- c("polynomial", "radial", "sigmoid")
 svmParamSpace <- makeParamSet(
   makeDiscreteParam("kernel", values = kernels),
@@ -139,13 +139,13 @@ svmParamSpace <- makeParamSet(
 )
 ```
 ### Listing 6.11
-```{r}
+```{r Listing_6_11}
 randSearch <- makeTuneControlRandom(maxit = 20)
 cvForTuning <- makeResampleDesc("Holdout", split = 2/3)
 ```
 
 ### Listing 6.12
-```{r}
+```{r Listing_6_12}
 library(parallelMap)
 library(parallel)
 parallelStartSocket(cpus = detectCores())
@@ -155,14 +155,14 @@ tunedSvmPars <- tuneParams("classif.svm", task = spamTask,
 parallelStop()
 ```
 ### Listing 6.13
-```{r}
+```{r Listing_6_13}
 tunedSvmPars
 tunedSvmPars$x
 ```
 ## Section 6.5.3
 
 ### Listing 6.14
-```{r}
+```{r Listing_6_14}
 configureMlr(on.par.without.desc = "quiet")
 tunedSvm <- setHyperPars(makeLearner("classif.svm"), pars.vals = tunedSvmPars$x)
 tunedSvmModel <- train(tunedSvm, spamTask)
@@ -171,7 +171,7 @@ tunedSvmModel <- train(tunedSvm, spamTask)
 # Section 6.6
 
 ### Listing 6.15
-```{r}
+```{r Listing_6_15}
 outer <- makeResampleDesc("CV", iters = 3)
 svmWrapper <- makeTuneWrapper("classif.svm", resampling = cvForTuning, par.set = svmParamSpace,
                               control = randSearch)
@@ -181,12 +181,17 @@ parallelStop()
 ```
 
 ### Listing 6.16
-```{r}
+```{r Listing_6_16, cache=TRUE}
 cvWithTuning
 (100*(1.0 - cvWithTuning$aggr))
 # https://mlr-org.com/docs/2015-07-28-visualisation-of-predictions/
 plotLearnerPrediction(learner = makeLearner("classif.svm", kernel = "polynomial"), task = spamTask)
 ```
 ### Exercise 3
-
+```{r Exercise_3}
+# todo
+```
 ### Exercise 4
+```{r Exercise_4}
+# todo
+```
