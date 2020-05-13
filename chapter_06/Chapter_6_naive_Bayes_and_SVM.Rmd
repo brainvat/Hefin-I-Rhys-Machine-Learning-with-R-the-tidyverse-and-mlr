@@ -99,35 +99,94 @@ bayesModel$learner.model$apriori
 bayesModel$learner.model$tables
 ```
 # Section 6.5
-
+```{r, message = FALSE, warning = FALSE}
+library(mlr)
+library(tidyverse)
+```
 ## Section 6.5.1
-
+```{r, message = FALSE, warning = FALSE}
+if ("kernlab" %in% rownames(installed.packages) == FALSE) {
+  install.packages("kernlab")
+}
+```
 ### Listing 6.7
+```{r}
+data(spam, package = "kernlab")
+spamTib <- as_tibble(spam)
+spamTib
+```
 
 ## Section 6.5.2
 
 ### Listing 6.8
-
+```{r}
+spamTask <- makeClassifTask(data = spamTib, target = "type")
+svm <- makeLearner("classif.svm")
+```
 ### Listing 6.9
+```{r}
+getParamSet("classif.svm")
+```
 
 ### Listing 6.10
-
+```{r}
+kernels <- c("polynomial", "radial", "sigmoid")
+svmParamSpace <- makeParamSet(
+  makeDiscreteParam("kernel", values = kernels),
+  makeIntegerParam("degree", lower = 1, upper = 3),
+  makeNumericParam("cost", lower = 0.1, upper = 10),
+  makeNumericParam("gamma", lower = 0.1, upper = 10)
+)
+```
 ### Listing 6.11
+```{r}
+randSearch <- makeTuneControlRandom(maxit = 20)
+cvForTuning <- makeResampleDesc("Holdout", split = 2/3)
+```
 
 ### Listing 6.12
-
+```{r}
+library(parallelMap)
+library(parallel)
+parallelStartSocket(cpus = detectCores())
+tunedSvmPars <- tuneParams("classif.svm", task = spamTask,
+                           resampling = cvForTuning,
+                           par.set = svmParamSpace, control = randSearch)
+parallelStop()
+```
 ### Listing 6.13
-
+```{r}
+tunedSvmPars
+tunedSvmPars$x
+```
 ## Section 6.5.3
 
 ### Listing 6.14
+```{r}
+configureMlr(on.par.without.desc = "quiet")
+tunedSvm <- setHyperPars(makeLearner("classif.svm"), pars.vals = tunedSvmPars$x)
+tunedSvmModel <- train(tunedSvm, spamTask)
+```
 
 # Section 6.6
 
 ### Listing 6.15
+```{r}
+outer <- makeResampleDesc("CV", iters = 3)
+svmWrapper <- makeTuneWrapper("classif.svm", resampling = cvForTuning, par.set = svmParamSpace,
+                              control = randSearch)
+parallelStartSocket(cpus = detectCores())
+cvWithTuning <- resample(svmWrapper, spamTask, resampling = outer)
+parallelStop()
+```
 
 ### Listing 6.16
-
+```{r}
+cvWithTuning
+(100*(1.0 - cvWithTuning$aggr))
+# https://mlr-org.com/docs/2015-07-28-visualisation-of-predictions/
+plotLearnerPrediction(learner = makeLearner("classif.svm", kernel = "polynomial"), task = spamTask)
+```
 ### Exercise 3
 
 ### Exercise 4
