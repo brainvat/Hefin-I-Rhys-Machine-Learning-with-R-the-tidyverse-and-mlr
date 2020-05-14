@@ -185,7 +185,11 @@ parallelStop()
 cvWithTuning
 (100*(1.0 - cvWithTuning$aggr))
 # https://mlr-org.com/docs/2015-07-28-visualisation-of-predictions/
+start_time <- Sys.time()
 plotLearnerPrediction(learner = makeLearner("classif.svm", kernel = "polynomial"), task = spamTask)
+#plotLearnerPrediction(learner = makeLearner("classif.svm", kernel = "linear"), task = spamTask, features = c("receive", "credit"))
+end_time <- Sys.time()
+(end_time - start_time)
 ```
 ### Exercise 3
 ```{r Exercise_3}
