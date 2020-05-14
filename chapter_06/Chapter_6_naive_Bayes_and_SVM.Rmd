@@ -1,13 +1,13 @@
 ---
 title: "Chapter 6 - naive Bayes and SVM"
 output:
-  html_document:
-    toc: true
-    toc_depth: 3
-    number_sections: true
+  html_document: 
+    fig_caption: yes
     highlight: tango
+    keep_md: yes
+    number_sections: yes
     theme: united
-    df_print: paged
+    toc: yes
 ---
 
 # Section 6.2
@@ -221,5 +221,46 @@ print("Very little difference")
 ```
 ### Exercise 4
 ```{r Exercise_4}
-# todo
+data(spam, package = "kernlab")
+spamTib2 <- as_tibble(spam)
+
+start_time <- Sys.time()
+
+spamTask2 <- makeClassifTask(data = spamTib2, target = "type")
+kernels <- c("linear")
+svmParamSpace2 <- makeParamSet(
+  makeDiscreteParam("kernel", values = kernels),
+  makeNumericParam("cost", lower = 0.1, upper = 100)
+)
+
+randSearch2 <- makeTuneControlRandom(maxit = 100)
+cvForTuning2 <- makeResampleDesc("Holdout", split = 2/3)
+
+library(parallelMap)
+library(parallel)
+parallelStartSocket(cpus = detectCores())
+tunedSvmPars2 <- tuneParams("classif.svm", task = spamTask2,
+                           resampling = cvForTuning2,
+                           par.set = svmParamSpace2, control = randSearch2)
+parallelStop()
+
+tunedSvmPars2
+tunedSvmPars2$x
+
+configureMlr(on.par.without.desc = "quiet")
+tunedSvm2 <- setHyperPars(makeLearner("classif.svm"), pars.vals = tunedSvmPars2$x)
+tunedSvmModel2 <- train(tunedSvm2, spamTask2)
+
+outer2 <- makeResampleDesc("CV", iters = 3)
+svmWrapper2 <- makeTuneWrapper("classif.svm", resampling = cvForTuning2, par.set = svmParamSpace2,
+                              control = randSearch2)
+parallelStartSocket(cpus = detectCores())
+cvWithTuning2 <- resample(svmWrapper2, spamTask2, resampling = outer2)
+parallelStop()
+
+cvWithTuning2
+(100*(1.0 - cvWithTuning2$aggr))
+
+end_time <- Sys.time()
+(end_time - start_time)
 ```
