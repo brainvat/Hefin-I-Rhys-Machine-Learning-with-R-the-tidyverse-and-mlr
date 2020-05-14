@@ -11,3 +11,4 @@ Notes
 
 - Stub out listings and exercises from section 6.3 to end of chapter
 - Completed code through exercises 3 and 4
+- Completed exercise 3, found no significant difference with NAs replaced with coded factor

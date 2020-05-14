@@ -192,8 +192,32 @@ end_time <- Sys.time()
 (end_time - start_time)
 ```
 ### Exercise 3
-```{r Exercise_3}
-# todo
+```{r Exercise_3, message = FALSE}
+library(mlr)
+library(tidyverse)
+
+data(HouseVotes84, package = "mlbench")
+# https://stackoverflow.com/questions/39126537/replace-na-in-a-factor-column
+votesTib2 <- as_tibble(HouseVotes84) %>% mutate_all(funs(fct_explicit_na(., 'a')))
+
+votesUntidy2 <- gather(votesTib2, "Variable", "Value", -Class)
+ggplot(votesUntidy2, aes(Class, fill = Value)) +
+  facet_wrap(~ Variable, scales = "free_y") +
+  geom_bar(position = "fill") +
+  theme_bw()
+
+votesTask2 <- makeClassifTask(data = votesTib2, target = "Class")
+bayes2 <- makeLearner("classif.naiveBayes")
+bayesModel2 <- train(bayes2, votesTask2)
+
+kFold2 <- makeResampleDesc(method = "RepCV", folds = 10, reps = 50, stratify = TRUE)
+bayesCV2 <- resample(learner = bayes2, task = votesTask2, resampling = kFold2,
+                    measures = list(mmce, acc, fpr, fnr))
+bayesCV$aggr
+bayesCV2$aggr
+(bayesCV2$aggr - bayesCV$aggr)
+print("Very little difference")
+
 ```
 ### Exercise 4
 ```{r Exercise_4}
